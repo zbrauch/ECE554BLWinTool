@@ -219,10 +219,10 @@ int main(int argc, char *argv[]) {
     //send flash data
     for(uint32_t i = 0; i < flashHexCount; i++) {
         uint8_t databuf[10];
-        databuf[0] = 10;
+        databuf[0] = ':';
         uint8_t bufLen = 1; //number of bytes in buffer
         for(uint8_t j = 0; j < hexCmds[i].len; j++) {
-            databuf[bufLen] = hexCmds->bytes[j];
+            databuf[bufLen] = hexCmds[i].bytes[j];
             bufLen++;
             if(bufLen > 9) {
                 serial.writeBytes(databuf,10);
