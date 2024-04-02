@@ -24,4 +24,20 @@ void AsciiHexToBytes(uint8_t *ascii, uint8_t asciiLen, uint8_t *out_bytes) {
         out_bytes[i>>1] = AsciiHexToByte(ascii+i);
 }
 
+
+class HexCmd {
+public:
+    HexCmd() {
+        len = 0;
+    }
+    void SetBytes(uint8_t *inBytes, uint8_t count) {
+        for(uint8_t i = 0; i < count; i++)
+            bytes[i] = inBytes[i];
+        len = count;
+    }
+    //Memory protection? What for?
+    uint8_t bytes[100];
+    uint8_t len;
+};
+
 #endif

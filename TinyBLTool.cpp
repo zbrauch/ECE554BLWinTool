@@ -14,9 +14,6 @@ uint8_t HexToBinary(char *hexFilePath, uint8_t *binaryOut, uint32_t *byteCount, 
         return -1;
     }
     
-
-    //(*byteCount)++;
-    
     uint8_t inChar;
     uint32_t offsetAddr = 0;
     while(!feof(hexFile)) {
@@ -79,10 +76,42 @@ uint8_t HexToBinary(char *hexFilePath, uint8_t *binaryOut, uint32_t *byteCount, 
     return 0;
 }
 
+uint8_t HexSquash(char *hexFilePath, HexCmd *hexCmdOut, uint32_t *hexLen) {
+    FILE *hexFile = fopen(hexFilePath, "rb");
+    if(hexFile == NULL) {
+        printf("ERROR: Failed to open HEX file!!!\r\n");
+        return -1;
+    }
+
+    *hexLen = 0;
+
+    uint8_t inChar;
+    while(!feof(hexFile)) { 
+        fread(&inChar, 1, 1, hexFile);
+        if(inChar == ':') { //HEX SOP
+            uint8_t hexAsciiBuf[100] = {};
+            hexAsciiBuf[0] = ':';
+            uint8_t i;
+            for(i = 1; hexAsciiBuf[i-1] != '\n' && hexAsciiBuf[i-1] != '\r'; i++) {
+                fread(hexAsciiBuf+i, 1, 1, hexFile);
+            }
+            uint8_t hexBytes[50];
+            AsciiHexToBytes(hexAsciiBuf+1, i-1, hexBytes);
+
+            hexCmdOut[*hexLen] = HexCmd();
+            hexCmdOut[*hexLen].SetBytes(hexBytes, (i-1)>>1);
+            (*hexLen)++;
+        }
+    }
+
+
+    return 0;
+}
+
 
 int main(int argc, char *argv[]) {
-    if(argc < 3) {
-        printf("Please specify COM port (\"COMX\"), and RAMcode hex file\r\n");
+    if(argc < 4) {
+        printf("Please specify COM port (\"COMX\"), RAMcode hex file, and flash hex file\r\n");
         return 1;
     }
 
@@ -91,13 +120,30 @@ int main(int argc, char *argv[]) {
     uint32_t byteCount = 0;
     uint8_t *binaryRam = (uint8_t*)malloc(30000000);
     uint32_t entryAddr = 0;
-    HexToBinary(argv[2], binaryRam, &byteCount, &startAddr, &entryAddr);
+    if(HexToBinary(argv[2], binaryRam, &byteCount, &startAddr, &entryAddr)) 
+        return -1;
     printf("Byte Count: 0x%08x, Start Addr: 0x%08x, Entry Address: 0x%08x\r\n", byteCount, startAddr, entryAddr);
 
     //temp write binary to file
-    FILE *tmpOutFile = fopen("tempbin", "wb");
+    /*FILE *tmpOutFile = fopen("tempbin", "wb");
     fwrite(binaryRam, 1, byteCount, tmpOutFile);
-    fclose(tmpOutFile);
+    fclose(tmpOutFile);*/
+
+
+    //take in and squash (hex ascii -> byte) flash hex file
+    HexCmd *hexCmds = (HexCmd*)malloc(20000*sizeof(HexCmd));
+    uint32_t flashHexCount;
+    if(HexSquash(argv[3], hexCmds, &flashHexCount))
+        return -1; 
+    //temp write hex entries to file
+    /*FILE *tmpOutFile = fopen("tempbin", "wb");
+    for(uint16_t i = 0; i < flashHexCount; i++) {
+        uint8_t tempout = ':';
+        fwrite(&tempout, 1, 1, tmpOutFile);
+        fwrite(hexCmds[i].bytes, 1, hexCmds[i].len, tmpOutFile);
+    }
+    fclose(tmpOutFile);*/
+
 
     //copy over COM port num string
     comPort[7] = argv[1][3];
@@ -157,15 +203,43 @@ int main(int argc, char *argv[]) {
     printf("Received: %s\r\n", inoutBuf);
 
 
-    //continue printing messages
-    for(;;) {
+    //continue printing received  messages for a second or three
+    for(uint8_t i = 0; i < 200; i++) {
         count = serial.readBytes(inoutBuf, 0xFF, 10, 0);
         if(count) {
             inoutBuf[count] = 0;
             printf("Received: %s\r\n", inoutBuf);
         }
     }
+
+
+    printf("Press ENTER to begin sending FLASH data\r\n");
+    scanf("%c", &dummyByte);
     
+    //send flash data
+    for(uint32_t i = 0; i < flashHexCount; i++) {
+        uint8_t databuf[10];
+        databuf[0] = 10;
+        uint8_t bufLen = 1; //number of bytes in buffer
+        for(uint8_t j = 0; j < hexCmds[i].len; j++) {
+            databuf[bufLen] = hexCmds->bytes[j];
+            bufLen++;
+            if(bufLen > 9) {
+                serial.writeBytes(databuf,10);
+                bufLen = 0;
+                usleep(100);
+            }
+        }
+        //send remaining bytes in buffer
+        if(bufLen) {
+            serial.writeBytes(databuf,bufLen);
+            usleep(100);
+        }
+
+        //temp wait
+        printf("Press ENTER to continue\r\n");
+        scanf("%c", &dummyByte);
+    }
 
     /*uint32_t mismatchCount = 0;
     for(uint64_t i = 0x200000000; i < 0x200000000+30000; i++) {
@@ -189,6 +263,7 @@ int main(int argc, char *argv[]) {
 
     serial.closeDevice();
     free(binaryRam);
+    free(hexCmds);
 
     return 0;
 }
