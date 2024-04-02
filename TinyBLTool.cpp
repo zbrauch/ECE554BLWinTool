@@ -237,9 +237,28 @@ int main(int argc, char *argv[]) {
         }
 
         //temp wait
-        printf("Press ENTER to continue\r\n");
-        scanf("%c", &dummyByte);
+        //printf("Press ENTER to continue\r\n");
+        //scanf("%c", &dummyByte);
+        usleep(1000);
+        if(i==1) {
+            printf("delaying?...");
+            usleep(1000000);
+            printf("delayed\r\n");
+        }
     }
+
+    printf("Hex Message Count: %d\r\n", flashHexCount);
+    //continue printing received  messages for a second or three
+    for(uint8_t i = 0; i < 200; i++) {
+        count = serial.readBytes(inoutBuf, 0xFF, 10, 0);
+        if(count) {
+            inoutBuf[count] = 0;
+            printf("Received: %s\r\n", inoutBuf);
+        }
+    }
+
+
+
 
     /*uint32_t mismatchCount = 0;
     for(uint64_t i = 0x200000000; i < 0x200000000+30000; i++) {
