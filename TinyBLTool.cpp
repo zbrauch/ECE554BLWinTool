@@ -218,22 +218,22 @@ int main(int argc, char *argv[]) {
     
     //send flash data
     for(uint32_t i = 0; i < flashHexCount; i++) {
-        uint8_t databuf[10];
+        uint8_t databuf[0xff];
         databuf[0] = ':';
         uint8_t bufLen = 1; //number of bytes in buffer
         for(uint8_t j = 0; j < hexCmds[i].len; j++) {
             databuf[bufLen] = hexCmds[i].bytes[j];
             bufLen++;
-            if(bufLen > 9) {
+            /*if(bufLen > 9) {
                 serial.writeBytes(databuf,10);
                 bufLen = 0;
                 usleep(100);
-            }
+            }*/
         }
         //send remaining bytes in buffer
         if(bufLen) {
             serial.writeBytes(databuf,bufLen);
-            usleep(100);
+            //usleep(100);
         }
 
         //temp wait
