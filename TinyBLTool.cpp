@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
         printf("Successfully connected\r\n");
     }
 
-    uint32_t msgCount = (byteCount>>3) + ((byteCount%8)?1:0);
+    uint32_t msgCount = (byteCount/18) + ((byteCount%18)?1:0);
 
     printf("Sending Init\r\n");
     uint8_t inoutBuf[0xff];
@@ -183,10 +183,10 @@ int main(int argc, char *argv[]) {
 
     printf("Sending RAM code...\r\n");
     inoutBuf[0] = 'D';
-    inoutBuf[9] = 'E';
-    for(uint32_t i = 0; i < byteCount; i+= 8) {
-        memcpy(inoutBuf+1, binaryRam+i, 8);
-        serial.writeBytes(inoutBuf,10);
+    inoutBuf[19] = 'E';
+    for(uint32_t i = 0; i < byteCount; i+= 18) {
+        memcpy(inoutBuf+1, binaryRam+i, 18);
+        serial.writeBytes(inoutBuf,20);
         usleep(100);
     }
 
@@ -239,12 +239,12 @@ int main(int argc, char *argv[]) {
         //temp wait
         //printf("Press ENTER to continue\r\n");
         //scanf("%c", &dummyByte);
-        usleep(1000);
-        if(i==1) {
+        usleep(100);
+        /*if(i==1) {
             printf("delaying?...");
             usleep(1000000);
             printf("delayed\r\n");
-        }
+        }*/
     }
 
     printf("Hex Message Count: %d\r\n", flashHexCount);
